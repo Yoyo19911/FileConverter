@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Convert HTML to PDF</title>
+    <meta charset="utf-8"/>
+    <script src="https://code.jquery.com/jquery-3.6.1.min.js"
+            integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ="
+            crossorigin="anonymous"></script>
+    <style>
+body { display: flex; justify-content: center; align-items: center; height: 100vh; }
+.hidden { display: none !important; }
+
+#form-html-to-pdf { display: flex; justify-content: center; align-items: center; }
+#pdf-file-link { text-decoration: none; color: black; }
+
+/*download animation*/
+.lds-ring { display: inline-block; position: relative; width: 40px; height: 40px; }
+.lds-ring div {
+    box-sizing: border-box;
+    display: block;
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    margin: 3px 5px 5px 5px;
+    border: 5px solid #cef;
+    border-radius: 50%;
+    animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+    border-color: #cef transparent transparent transparent;
+}
+.lds-ring div:nth-child(1) { animation-delay: -0.45s; }
+.lds-ring div:nth-child(2) { animation-delay: -0.3s; }
+.lds-ring div:nth-child(3) { animation-delay: -0.15s; }
+@keyframes lds-ring {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+    </style>
+</head>
+    <body>
+        <form id="form-html-to-pdf" action="javascript:void(0);">
+            <label>
+                Select HTML file:
+                <input id="input-html-file" type="file" onchange="updateButtonsVisiblity()" />
+            </label>
+            <button class="hidden" id="btn-convert" onclick="getPdfFileBody()">Convert to PDF</button>
+            <div class="lds-ring hidden"><div></div><div></div><div></div><div></div></div>
+            <button class="hidden" id="btn-pdf-download"><a id="pdf-file-link" href=""></a></button>
+        </form>
+        <script>
+            //change value of this variable to actual API url
+            const apiUrl = 'https://localhost:7126';
+
+            const fileSelected = () => $('#input-html-file')[0].files.length;
+
+            const updateButtonsVisiblity = () => fileSelected()
+                ? $('#btn-convert').removeClass('hidden')
+                : $('#btn-convert, #btn-pdf-download').addClass('hidden');
+
+            const getBase64 = (file, success, error) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => { console.log(reader.result); success(reader.result.slice(22)); bla = reader.result; }
+                reader.onerror = error;
+            }
+
+            const prepareAndShowSaveFileButton = (fileBodyAsBase64, fileName) =>
+            {
+                const binary_string = window.atob(fileBodyAsBase64);
+                const len = binary_string.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++)
+                    bytes[i] = binary_string.charCodeAt(i);
+                const fileBody = bytes.buffer;
+
+                const blob = new Blob([fileBody], { type: "application/pdf" });
+                const pdfFileName = fileName.replace(/html$/, 'pdf');
+                $('#pdf-file-link')
+                    .attr('href', URL.createObjectURL(blob))
+                    .attr('download', pdfFileName)
+                    .html('Download ' + pdfFileName);
+
+                $('.lds-ring').addClass('hidden');
+                $('#btn-pdf-download').removeClass('hidden');
+            }
+
+            const getPdfFileBody = () => {
+                const htmlFile = $('#input-html-file')[0].files[0];
+                $('.lds-ring').removeClass('hidden');
+                getBase64(htmlFile,
+                    htmlFileBody => {
+                        $.ajax({
+                            url: apiUrl + '/html-to-pdf',
+                            type: "post",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "accept": "text/plain"
+                            },
+                            data: JSON.stringify(htmlFileBody),
+                            dataType: 'json',
+                            success: data => prepareAndShowSaveFileButton(data, htmlFile.name ?? 'jaja'),
+                            error: (_, textStatus, errorThrown) => {
+                                alert('An error occured while converting file');
+                                console.log('An error occured while executing POST request. Details are below:');
+                                console.log(textStatus);
+                                console.log(errorThrown);
+                                $('.lds-ring').addClass('hidden');
+                            },
+                        });
+                    },
+                    error => {
+                        alert('An error occured while converting file');
+                        console.log('An error occured while converting file. Details are below:');
+                        console.log(error);
+                    }
+                );
+            }
+        </script>
+    </body>
+</html>
