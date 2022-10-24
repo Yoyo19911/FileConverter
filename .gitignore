@@ -361,3 +361,9 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Pupperter library local chromium
+.local-chromium
+
+# Temp files folder
+/FileConverter.Api/Files
